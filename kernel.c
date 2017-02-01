@@ -3,37 +3,46 @@
 #include "./kernel.h"
 
 int main() {
-  char buf[80];
-  char buffer[512];
-  char line[80];
-  char test[4];
-
-  printString("hello world!\n");
-  readString(buf);
-
-
-  readSector(buffer, 30);
-  printString(buffer);
-
   makeInterrupt21();
+  interrupt(0x21, 4, "shell\0", 0x2000, 0);
 
-  interrupt(0x21, 1, line, 0, 0);
-  interrupt(0x21, 0, line, 0, 0);
+
+  printString("woah man, halt and catch fire");
 
   while (1) {}
+
   return 0;
 }
 
-void handleInterrupt21(int ax, int bx, int cx, int dx) {
-  if (ax == 0) {
-    printString(bx);
-  } else if (ax == 1) {
-    readString(bx);
-  } else if (ax == 2) {
-    readSector(bx, cx);
-  } else {
-    printString("invalid syscall");
+void readFile(char* fileName, char *buf) {
+  char dirs[SECTOR_SIZE];
+
+  int j = 0;
+  int i;
+
+  readSector(&dirs, DIRECTORY_SECTOR);
+
+  for (i = 0; i < SECTOR_SIZE - 5; i++) {
+    if (dirs[i] == fileName[0]) {
+      if (dirs[i + 1] == fileName[1] || fileName[1] == '\0') {
+        if (dirs[i + 2] == fileName[2] || fileName[1] == '\0') {
+          if (dirs[i + 3] == fileName[3] || fileName[1] == '\0') {
+            if (dirs[i + 4] == fileName[4] || fileName[1] == '\0') {
+              if (dirs[i + 5] == fileName[5] || fileName[1] == '\0') {
+                i = i + 6; /* put us at first address */
+                do {
+                  readSector(buf + SECTOR_SIZE * j, dirs[i + j]);
+                  j++;
+                } while (dirs[i + j] != 0);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
   }
+  return;
 }
 
 void printString(char *chars) {
@@ -96,4 +105,39 @@ int div(int a, int b) {
   while ((quotient  + 1)* b  <= a)
     quotient  = quotient  + 1;
   return quotient;
+}
+
+void executeProgram(char* name, int segment) {
+  char buffer[MAX_FILE_SIZE];
+  int i = 0;
+  readFile(name, &buffer);
+
+  while (i < MAX_FILE_SIZE) {
+    putInMemory(segment, i, buffer[i]);
+    i++;
+  }
+
+  launchProgram(segment);
+}
+
+void terminate() {
+  interrupt(SERVICE, 4, "shell", 0x3000, 0);
+}
+
+void handleInterrupt21(int ax, int bx, int cx, int dx) {
+  if (ax == 0) {
+    printString(bx);
+  } else if (ax == 1) {
+    readString(bx);
+  } else if (ax == 2) {
+    readSector(bx, cx);
+  } else if (ax == 3) {
+    readFile(bx, cx);
+  } else if (ax == 4) {
+    executeProgram(bx, cx);
+  } else if (ax == 5) {
+    terminate();
+  } else {
+    printString("invalid syscall");
+  }
 }
