@@ -13,12 +13,19 @@ all:
 	./loadFile tstpr2
 	./loadFile tstprg
 	./loadFile message.txt
+	./loadFile phello
 
 #shell
 	bcc -ansi -c -o shell.o shell.c
 	as86 lib.asm -o lib.o
 	ld86 -o shell -d shell.o lib.o
 	./loadFile shell
+
+#hue
+	bcc -ansi -c -o hue.o hue.c
+	as86 lib.asm -o lib.o
+	ld86 -o hue -d hue.o lib.o
+	./loadFile hue
 
 clean:
 	rm floppya.img *.o *~
